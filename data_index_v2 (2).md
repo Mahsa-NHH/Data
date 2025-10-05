@@ -304,7 +304,7 @@
 | DS-7.1.21          | utility/reddays_2013_2022.csv                        |                                                                              |
 | DS-7.1.22          | utility/ssb_electricity_prices.csv                   | Average prices of electricity in Norway over time (quarterly)                |
 | DS-7.1.23          | utility/ssb_fuel_prices.csv                          | Average prices of fuel (gasoline and diesel) in Norway over time (monthly)   |
-| DS-7.1.24          | utility/vehicle_taxes.csv                            |    |
+| DS-7.1.24          | utility/vehicle_taxes.csv                            |                                                                              |
 
 **utility — Detailed Metadata**
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
