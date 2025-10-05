@@ -36,7 +36,6 @@
 **NPRA — Detailed Metadata**
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
-
 | DS-1.1.1 | npra | carhistory.csv | `npra/2015/carhistory.csv` | NPRA | Buydate: 1911-11-11 to 2015-12-17; Regdate: 1980-01-03 to 2015-12-17 | One vehicle registration event per row (licensenumber + regdate) | CSV, 38,577,882 rows × 13 cols, 3408.63 MB | archived | `scripts\load_hhs_cardata.py` | licensenumber = plate number; oxid = record ID; ownerid = owner ID; regtype = registration type; buydate = date (buy); regdate = date (registration); fnronr = record/event number; ownername = owner name; address = owner address; postalnumber = owner postal code; vehiclegroup = vehicle category; ownertype = owner type; previouslicensenumber = previous plate; NPRA vehicle registration history — one row per registration/ownership event (by licensenumber), with dates (buy/reg), event code, owner info, and vehicle group.|
 
 | DS-1.1.2 | npra | cartekn.csv | `npra/2015/cartekn.csv` | NPRA | Datefirstregnorway: 1901-01-01 to 2015-11-30; Deregisterdate: 1932-02-26 to 2015-11-30; Lasteucontroldate: 1994-09-19 to 2015-11-30; Nexteucontroldate: 1994-12-31 to 2021-10-31; Lastregdate: 1919-05-19 to 2015-11-30 | Vehicle (one row per license number) | CSV, 1,725,207 rows × 52 cols, 324.26 MB | archived | `scripts\load_hhs_cardata.py` | Per-vehicle technical attributes from NPRA — one row per license number/chassis, with make/model codes, engine & displacement/fuel, dimensions/weights, EU control dates, emissions, seats; covers from first registration to last/deregistration.
@@ -99,7 +98,7 @@
 
 | DS-1.13 | npra | ownermuni.csv | `npra/ownermuni.csv` | NPRA | - | One row per owner municipality code (`EIER_KOMMUNE_NUMMER`) with total `count` | CSV (\~5.6 KB), 444 rows × 2 cols | Raw | - | Aggregated counts of vehicle owners per Norwegian municipality, number of owners in motor vehicle registry for each municipality code. Municipality codes are not all from same version |
 
-| DS-1.14 | npra | ownermunimap.csv |`npra/ownermunimap.csv`| NPRA | - | One row per NPRA municipality code mapped to a standard `munid` | CSV (\~4.3 KB), 438 rows × 2 cols | TBD | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_registration_data.py`, `scripts\odometer_load.py`  | Crosswalk mapping NPRA municipality codes (`munid_npra`) to standardized municipality IDs (`munid`) for harmonizing across merger, mapping from municipality codes in motor vehicle registry to the 2020 municipality codes|
+| DS-1.14 | npra | ownermunimap.csv |`npra/ownermunimap.csv`| NPRA | - | One row per NPRA municipality code mapped to a standard `munid` | CSV (\~4.3 KB), 438 rows × 2 cols | TBD | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_registration_data.py`, `scripts\odometer_load.py`  | Crosswalk mapping NPRA municipality codes (`munid_npra`) to standardized municipality IDs (`munid`) for harmonizing across merger, mapping from municipality codes in motor vehicle registry to the 2020 municipality codes |
 
 | DS-1.15 | npra | REG_brandcodes.csv | `npra/REG_brandcodes.csv` | NPRA | - | One row per brand code | CSV, 2 cols (`kode`, `navn`); \~29 KB; 2,150 rows | Reference mapping | `scripts\read_regdata.py` | Code list mapping vehicle brand codes (`kode`) to brand names (`navn`), mapping from brand codes in motor vehicle registry to brand names |
 
@@ -159,7 +158,7 @@
 
 | DS-2.2.3 | electricity | Elspot_prices | `electricity/nordpool/Elspot_prices/YYYY/syseurYY.sdv` | Nord Pool | 1999-2023 | daily rows | `.sdv`, 65 KB | Raw | - | Nord Pool Elspot system price, semicolon-delimited file with 24 hourly EUR/MWh values per day, plus daily average and a EUR→NOK reference rate. Contains folder 1999-2023 and 2014_24h: 2014 Nord Pool System Price — hourly EUR/MWh in .sdv; 24×365 table with standard Nord Pool headers (DST 23/25 hrs as applicable).|
 
-| DS-2.2.4| electricity | Market_coupling_capacity | `electricity/nordpool/Market_coupling_capacity/YYYY/mcapYYWW.sdv` | Nord Pool | 2011-2022 | Hourly (24×7) per interconnector & direction | .sdv; semicolon-delimited text | Raw | - |ST = file meta; BE = bidding areas; UE = hourly available transfer capacity by interconnector/direction; CR = capacity reductions/constraints. Each year contans different weeks, Contains folder 2011-2022 and 2014_24h: Link = interconnector code (e.g., DK1_DE); Direction = left→right of code; Capacity = ATC in MW; hours H1–H24 in local time.|
+| DS-2.2.4 | electricity | Market_coupling_capacity | `electricity/nordpool/Market_coupling_capacity/YYYY/mcapYYWW.sdv` | Nord Pool | 2011-2022 | Hourly (24×7) per interconnector & direction | .sdv; semicolon-delimited text | Raw | - |ST = file meta; BE = bidding areas; UE = hourly available transfer capacity by interconnector/direction; CR = capacity reductions/constraints. Each year contans different weeks, Contains folder 2011-2022 and 2014_24h: Link = interconnector code (e.g., DK1_DE); Direction = left→right of code; Capacity = ATC in MW; hours H1–H24 in local time.|
 
 | DS-2.2.5 | electricity | Market_coupling_flow | `electricity/nordpool/Market_coupling_flow/YYYY/mfloYYWW.sdv` | Nord Pool | 2011-2023, each folder contains different numbers of weeks | Link × Direction × Day × time-bin (24×7; interval columns per day)| `.sdv` (semicolon-delimited) | Raw | - | Link: interconnector ID; Direction: signed flow (MW) by link orientation; Hour: CET timestamps (winter, UTC+1). Contains folder 2011-2023 and 2014_24h | 
 
@@ -183,7 +182,6 @@
 
 | DS-2.2.7.4.1 | electricity | Pose_description.doc | `electricity/nordpool/operating/pose/Pose_description.doc` | Nord Pool | - | - | `.doc`, \~28 KB | Reference | - | Defines the semicolon-separated weekly Sweden files poseYYWW.sdv. Sections: ST (file/time metadata), BE (area alias + text), hourly series PR/OM/FB/PS/UT with codes RN, RO, RC, RP, RS, DD, F, E, P, PE, U (prices in EUR/MWh; others in MWh/h, integers), and AL (total line count).|
 
-
 | DS-2.3.1 | electricity | hydrologi_magasin_13092024.xlsx |`electricity/NVE/hydrologi_magasin_13092024.xlsx` | NVE | 1958 - 2024 |  Area × Year × Week | `.xlsx` (size 475 KB) | Raw | - | Weekly Nordic hydrology/reservoir status by area (year–week) with precipitation energy, useful inflow (model & statistical), hydrological balance, reservoir deviation, soil/groundwater, snow storage, and related deviations. Columns: Area, Year, Week, Precipitation energy, Useful inflow (HBV model), Useful inflow (statistics), Hydrological balance, Reservoir deviation, Soil & groundwater, Snow storage, Deviation (snow/soil/groundwater). Units: energy quantities (e.g., GWh) and indexes. |
 
 | DS-2.3.2 | electricity | magasindata_per_mag.csv |`electricity/NVE/magasindata_per_mag.csv` | NVE | 1958 - 2024 |  Area × Year × Week | `.xlsx` (size 475 KB) | Raw | - | Weekly reservoir-levels per Norwegian reservoir, magasinid: reservoir ID; MagasinNavn: reservoir name; tidspunkt: timestamp (weekly); maalt\_fylling\_gwh: measured energy content (GWh); maalt\_kapasitet\_gwh: measured capacity (GWh); fyllingsgrad: fill level (%)
@@ -206,8 +204,11 @@
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
 | DS-3.1.1 | airquality | emissions_dev_plot.png |`airquality\figures\emissions_dev_plot.png` | - | - | .png | fig | - | TBD |
+
 | DS-3.2 | airquality | measurements.csv |`airquality\measurements.csv` | NILU | 1978-12-01 to 2025-03-19 | Station × component × hour | CSV, 41,867,014 rows × 5 cols, 1797.71 MB | Raw | `scripts\get_airquality_measures.py` | measurement of each component from each station, value = measured value (unit depends on component); qualitycontrolled = QC flag (True/False); component = pollutant code (e.g., O3, NO2, PM10); id = station ID |
+
 | DS-3.3 | airquality | measurements.pq |`airquality\measurements.pq` | NILU | Time: 1978-12-01 to 2025-03-19 | * | .pq, same as measurements.csv in .pq version| Raw | * | * |
+
 | DS-3.4 | airquality | stations.csv | `airquality\stations.csv` | EEA Air Quality e-Reporting (EOI-station list) | 1978-11-30 → 2025-03-19 | One row per monitoring station | CSV, 1,298 rows × 15 cols, 0.04 MB | Raw | * | Air-quality station registry: one row per monitoring site with location (lat/lon), station type, measured pollutants, EOI code, and first/last measurement dates. |
 
 **ofv**
@@ -222,7 +223,9 @@
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
 | DS-4.1-4.29 | ofv | YYYY.xlsx  | `ofv\YYY.xlsx` | OFV | 1994–2022 | One row per vehicle (registration/config) | XLSX | Raw | - | information on cars registered in year XXXX, including prices, battery, range and segments (additional to the motor vehicle registry). Contains duplicate values for each license number when the information in the motor vehicle registry is not sufficient to identify the exact brand-model-make of the car. All years share the same structure. |
+
 | DS-4.30 | ofv | cars_full.pq | `ofv\cars_full.pq` | * | * | * | .pq, 253 MB | Intermediate Data | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_car_data.py`, `scripts\odometer_load.py` | parquet file with all the yearly files merged. |
+
 | DS-4.31 | ofv | LP_All.csv | `ofv\LP_All.csv` | * | * | One row per timestamp × series ID | CSV, 8,126 KB | Raw | `scripts\driving_analysis_sketchboard.py`, `scripts\read_regdata.py` | list prices and additional information by brand-model-make per year. Difficult to merge with either the yearly OFV files or the motor vehicle registry |
 
 **processed**
@@ -244,14 +247,23 @@
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
 | DS-5.1 | processed | carhist_munid.csv | `processed/carhist_munid.csv` | - | 1980-01-02 to 2018-09-05 | Vehicle × date (licensenumber × regdate) | CSV, 13,031,969 rows × 5 cols, 382.54 MB | processed | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_hhs_cardata.py`, `scripts\load_odometer_data.py` | Per-vehicle registration events with municipality: one row per licensenumber × date, including registration_type, owner_type, and munid (municipality code). |
+
 | DS-5.2 | processed | diffusekm.csv | `processed/diffusekm.csv` | - | 1996-01-01 to 2022-02-18 | Vehicle × date (licensenumber × regdate) | CSV, 14,321,514 rows × 21 cols, 2581.87 MB | processed | `scripts\driving_analysis_sketchboard.py`, `scripts\odometer_load.py` | Per-vehicle usage periods (startmonth→endmonth) with derived distance and cost metrics. Each row is a license plate’s spell of time showing Dkm (km driven), Ddays, kmprday, costkm (fuel/toll), fuel type & HEV/PHEV flags, munid, vehicle attributes (van/body/segment), and reference dates (regdate, rownerdate). |
+
 | DS-5.3 | processed | diffusekm.dta | `processed/diffusekm.dta` | * | * | * | dta, 1881 MB| * | `scripts\driving_analysis_sketchboard.py` | * | 
+
 | DS-5.4 | processed | diffusekm.pq | `processed/diffusekm.pq` | * | * | * | pq, 13,695,491 rows × 21 cols, 599.88 MB| `scripts\driving_analysis_sketchboard.py`, `scripts\odometer_load.py` | * |
+
 | DS-5.5 | processed | drivemodel_sample.pq | `processed/drivemodel_sample.pq` | - | Date: 2010-01-01 to 2019-09-04; Origdate: 1995-10-27 to 2017-11-30| Row-level records | PARQUET, 2,309,600 rows × 28 cols, 158.53 MB | processed | `scripts\driving_analysis.py`, `scripts\prepare_datasets.py` | Per-vehicle driving-spell records combining registry, odometer, routing, and demographics. For each plate (regnr) and spell (startmonth→endmonth), includes km, Dkm, Ddays, kmprday, fuel/HEV/PHEV/usage, costs (avgprice, costkm, tolls), registration and owner info (registration\_type, owner\_type, munid, origmunid, origdate), route features (lrid, routekm, centrality), and year/income/age. |
+
 | DS-5.6 | processed | postalmunidmap.csv | `processed/postalmunidmap.csv` | TBD | - | One row per postal code → municipality mapping | CSV, 70 KB | reference  | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_hhs_cardata.py`, `scripts\load_registration_data.py` | Crosswalk from Norwegian postal codes to standardized municipality IDs (munid) for joining datasets to a common geography, postalcode = Norwegian post code; munid = standardized municipality ID; (optional fields if present) munname = municipality name; share = share of postcode in munid (if split); valid_from/valid_to = versioning dates. |
+
 | DS-5.7 | processed | vehicle_choices.pq | `processed/vehicle_choices.pq` | TBD | - | Alternative-level (purchase event × vehicle alternative) | pq, 391 rows × 20 cols, 29 KB | processed | `scripts\driving_analysis.py`, `scripts\predict_choice_emissions_vca.py` | Vehicle purchase choice-set dataset—one row per alternative within a purchase event, with attributes and a chosen flag for the selected vehicle.
+
 | DS-5.8 | processed | vehicle_choices_with_emissions.pq | `processed/vehicle_choices_with_emissions.pq` | TBD | - | one row per vehicle choice instance with attached emissions attributes | pq, 35 KB | processed | `scripts\driving_analysis.py`, `scripts\predict_choice_emissions_vca.py`, `scripts\prepare_datasets.py`  | Vehicle-choice dataset augmented with emissions metrics (e.g., per-vehicle CO₂/NOx factors) for each choice record |
+
 | DS-5.9 | processed | vehicle_demog_choice_obs.pq | `processed/vehicle_demog_choice_obs.pq` | TBD | - | Row-level records | pq, 697,760 rows × 35 cols, 13.12 MB | processed | - | vehicle choice sets for discrete-choice modeling: each row is an alternative within a choice occasion (indexed by demogid, choice_id), with demographics (agecat, munid, income), vehicle attributes (segment/body/brand, price, range, weight, size, power, seats, transmission), technology flags (fuelid, hev, phev), operating costs (fuelprice, costkm, taxkm), emissions (co2, thc, nox, pm components), and taxes (regtax, actregtax), including an “outside” option. |
+
 | DS-5.10 | processed | vwp2502_choice_brand_model_make.csv | `processed/vwp2502_choice_brand_model_make.csv` | TBD | - | One row per brand × model | CSV, 1,868 rows × 3 cols, 0.07 MB | processed | - | Alternative-level choice-set CSV for vehicle purchase modeling: each row is a candidate alternative with brand, model, make (and typical specs/prices), grouped by decision maker and choice occasion; includes a chosen-alternative flag. |
 
 **traffic**
@@ -266,7 +278,9 @@
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
 | DS-6.1 | traffic | aggvol.csv | `traffic/aggvol.csv` | NPRA | 1986-01-01T00:00:00+01:00 — 2022-04-27T22:00:00+02:00 | Hourly | CSV, 7.1 GB, Columns: 4, Rows: 200,405,153 (excluding header) | Raw | `scripts\get_traffic_measures_addparts.py`, `scripts\get_traffic_measures.py` | Hourly traffic per location: ISO-8601 timestamp, vehicle volume (nullable), and observation coverage (0–1). |
+
 | DS-6.2 | traffic | lengthvol.csv | `traffic/lengthvol.csv` | NPRA | 2018-02-27T11:00:00+01:00 — 2021-04-13T13:00:00+02:00 | Hourly by length-bin | CSV, 57.4 GB, Columns: 5 | Raw | `scripts\get_traffic_measures_addparts.py`, `scripts\get_traffic_measures.py` | Hourly traffic per location, split by vehicle length bins: ISO-8601 time, id, length bin (e.g., `[5.6,7.6)`), volume, and coverage. | 
+
 | DS-6.3 | traffic | trafficregpoints.csv | `traffic/trafficregpoints.csv` | NPRA | 1986-01-01 00:00:00+01:00 — 2022-04-23 19:00:00+02:00 | One row per counting point | CSV, 0.7 MB, 4,434 rows × 13 cols | Raw | `scripts\get_traffic_measures_addparts.py`, `scripts\get_traffic_measures_addparts.py` | station registry: one row per road traffic counting point, with IDs (incl. NPRA), location (lat/lon, municipality), status flags (bike/periodic/retired/tempout), and the first/last timestamps where data exists. |
 
 **utility**
@@ -295,23 +309,38 @@
 **utility — Detailed Metadata**
 | **ID** | **Domain** | **Name** | **Path** | **Source** | **Period** | **Grain** | **Format/Size** | **Status** | **Scripts** | **Definitions** |
 |--------|------------|----------|----------|------------|------------|-----------|-----------------|------------|-------------|-----------------|
-| DS-7.1.1-DS-7.1.8 | utility | vca_YYYY.csv | utility/vca_YYYY.csv | TBD | 2019-2025/02 | One row per vehicle variant/trim | CSV, 4,140 rows × 45 cols; 44 manufacturers; Testing scheme: WLTP; Fuel types: 8; Powertrains: 7 | Raw | `scripts\predict_emissions_from_vca.py` | (for 2019–2025/02 set):
-Annual VCA certification snapshot—one row per UK type-approved car variant/trim with specs (manufacturer/model, fuel type & powertrain, transmission, engine size/power, Euro standard) and WLTP results (CO₂, fuel economy; electric consumption & range for BEV/PHEV, weighted values for PHEV), plus derived running-cost fields. |
+| DS-7.1.1-DS-7.1.8 | utility | vca_YYYY.csv | utility/vca_YYYY.csv | TBD | 2019-2025/02 | One row per vehicle variant/trim | CSV, 4,140 rows × 45 cols; 44 manufacturers; Testing scheme: WLTP; Fuel types: 8; Powertrains: 7 | Raw | `scripts\predict_emissions_from_vca.py` | (for 2019–2025/02 set): Annual VCA certification snapshot—one row per UK type-approved car variant/trim with specs (manufacturer/model, fuel type & powertrain, transmission, engine size/power, Euro standard) and WLTP results (CO₂, fuel economy; electric consumption & range for BEV/PHEV, weighted values for PHEV), plus derived running-cost fields. |
+
 | DS-7.1.9 | utility | vca_unique.csv| `utility/vca_unique.csv` | TBD | - | One row per unique Manufacturer–Model–Description |  CSV, 530.4 KB, 10,443 rows × 3 cols | Raw | - | It’s a deduplicated catalog of vehicle variants: 10,443 rows with three fields — Manufacturer, Model, Description — representing unique VCA entries (49 manufacturers, ~1k models). |
+
 | DS-7.1.10 | utility | avstand_kommun_km_2_8.dta.csv | `utility/avstand_kommun_km_2_8.dta.csv` | TBD | - | Origin municipality × destination municipality | Stata .dta | Raw | - | Stata dataset of inter-municipal distances in Norway — likely a pairwise table of municipality A → municipality B with distance in kilometers, origin_munid = from-municipality ID; dest_munid = to-municipality ID; distance_km = distance between the two in km. |
+
 | DS-7.1.11 | utility | centrality2020.csv | `utility/centrality2020.csv` | TBD | 2020 | Municipality (munid/kommunenummer) | CSV, 3 KB | Reference mapping | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\get_municipality_population_ssb_api.py`, `scripts\get_municipality_population_ssb_api.py`, `scripts\prepare_datasets.py` | Norwegian municipality centrality (SSB “Sentralitet”) for 2020—one row per municipality with centrality index/class for linking to other datasets. |
+
 | DS-7.1.12 | utility | cpi_1865_2022.csv | utility/cpi_1865_2022.csv | SSB (Statistics Norway) | 1865–2022 | Yearly (Norway) | CSV, 2 KB | Raw | `scripts\driving_analysis_sketchboard.py` | year = calendar year; cpi = consumer price index (index value; base year per source). |
+
 | DS-7.1.13 | utility | cpi_monthly_1920_2024.csv | utility/cpi_monthly_1920_2024.csv | SSB (Statistics Norway) | 1920–2024 | Monthly (Norway) | CSV, 21 KB | Raw | `scripts\driving_analysis.py`, `scripts\get_ssb_cpi.py`, `scripts\load_additional_data.py` | date = month (YYYY-MM); cpi = CPI index value |
+
 | DS-7.1.14 | utility | cpi_yearly_1920_2024.csv | utility/cpi_yearly_1920_2024.csv | SSB (Statistics Norway) | 1920–2024 | Yearly (Norway) | CSV, 2 KB | Raw | `scripts\get_ssb_cpi.py` | Yearly CPI index for Norway, 1920–2024 |
+
 | DS-7.1.15 | utility | gdp_population.csv | utility/gdp_population.csv | TBD | 1978Q1-2024Q4 | Quarterly | CSV, 7 KB | Raw | `scripts\get_ssb_data_api.py`, `scripts\load_registration_data.py` | GDP and population |
+
 | DS-7.1.16 | utility | income_lognormal_params_2022_2015NOK.csv | utility/income_lognormal_params_2022_2015NOK.csv | TBD | 2022 | Group × year  | CSV, 1 KB | Raw | - | Columns typically include group identifiers (e.g., munid/segment), mu and sigma of log-income, and possibly counts/means. |
+
 | DS-7.1.17 | utility | income_muni_year.csv | utility/income_muni_year.csv | TBD | 2005-2023 | Municipality × year | CSV, 184 KB | Raw | `scripts\get_municipality_population_ssb_api.py` | Typical columns: munid (municipality ID), year, mean_income, median_income, p10, p25, p75, p90, n (population count); currency NOK unless noted. |
+
 | DS-7.1.18 | utility | matrikkelenAdresse.csv | utility/matrikkelenAdresse.csv | Matrikkelen | Oppdateringsdato: 2020-05-27 to 2025-09-26 | Address record (municipality × street × house number) | CSV, 2,888,612 rows × 46 cols, 776.97 MB | Raw | - | lokalid = local id; kommunenummer = municipality code; kommunenavn = municipality name; adressenavn = street name; nummer = house number; bokstav = letter; postnummer = postal code; poststed = postal place, Typical use: geocoding and joining people/vehicles to a municipality/street/house number for analysis. |
+
 | DS-7.1.19 | utility | population_muni_year_age.csv | utility/population_muni_year_age.csv | Matrikkelen |  Year: 1986 to 1993 | Row-level records | CSV, 1,562,596 rows × 4 cols, 23.93 MB | Raw | `scripts\get_municipality_population_ssb_api.py` | A CSV of annual population counts by municipality and single-year age, with columns `year`, `munid`, `age`, and `population`. |
+
 | DS-7.1.20 | utility | postnummer.csv | utility/postnummer.csv | (likely Posten/SSB) | 29 Aug 2022 to 02 Aug 2024 | One row per postal code | CSV, 5,790 rows and 14 columns | Raw | `scripts\load_hhs_cardata.py` | Typical columns: postnummer (postcode), poststed (place name), kommunenr (municipality code), kommune (name), kategori (street/PO box), ev. fylke (county), lat/lon (if present). Used to join addresses to municipalities. |                                                                            
 | DS-7.1.21 | utility | reddays_2013_2022.csv | `utility/reddays_2013_2022.csv` | Statistics Norway / calendar ref | 2013-01-01 to 2022-12-31 | Daily dates | CSV, 3653 rows and 10 columns | Raw | - | Norwegian “red days” (public holidays and Sundays). Typical cols: date, holiday_name, is_red_day (1/0), weekday; used to flag non-working days. |                                                                            
+
 | DS-7.1.22 | utility | ssb_electricity_prices.csv | utility/ssb_electricity_prices.csv | SSB | 2003 to 2023 | quarterly | CSV, 84 rows × 2 columns | Raw | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_additional_data.py`, `scripts\odometer_load.py` | Average prices of electricity in Norway over time (quarterly) |
+
 | DS-7.1.23 | utility | ssb_fuel_prices.csv | utility/ssb_fuel_prices.csv |  Statistics Norway (SSB) | 1986 to 2024 | Monthly | CSV, 0.01 MB, 452 rows × 3 columns | Raw | `scripts\driving_analysis_sketchboard.py`, `scripts\driving_analysis.py`, `scripts\load_additional_data.py`, `scripts\odometer_load.py`| Average prices of fuel (gasoline and diesel) in Norway over time (monthly) |    
+
 | DS-7.1.24 | utility | vehicle_taxes.csv | utility/vehicle_taxes.csv | TBD | 1969-2023 | TBD | CSV, 0.01 MB, 555 rows × 5 columns | Raw | `scripts\driving_analysis.py`, `scripts\prepare_datasets.py` | year, name, step, increment, fee | 
+
 
 
