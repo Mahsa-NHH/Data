@@ -7,6 +7,28 @@ Created on Thu Jan 20 14:58:01 2022
 
 Get air quality measures from api.nilu.no
 """
+"""
+SSB Municipality Data Pipeline
+
+Purpose
+-------
+Fetch municipal population (07459) and household income (06944), map all municipality
+codes to a fixed anchor date (default 2020-01-01), and export clean CSVs.
+
+Outputs
+-------
+- centrality2020.csv         # munid (2020), centrality (KLASS 128)
+- muni2020_codes.csv         # code, name (valid on 2020-01-01)
+- population_muni_year_age.csv
+  - year:int, munid:int (anchor), age:int, population:int
+- income_muni_year.csv
+  - year:int, munid:int (anchor), nhouseholds:float, income_posttax:float, income:float
+
+Notes
+-----
+- Code mapping uses KLASS 131 changes. Forward to anchor date, then (optionally) back-map
+  post-anchor changes so everything stays aligned to the anchor geography.
+"""
 
 import requests
 import numpy as np
