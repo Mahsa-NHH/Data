@@ -156,10 +156,9 @@ failure = []
 measuredata = pd.DataFrame()
 
 for sid in stationdata.index:
+    stationname = stationdata.loc[sid, 'station']  # define first
     logging.info("Loading data for %s (%s)", sid, stationname)
     tic = time.time()
-
-    stationname = stationdata.loc[sid, 'station']
     startyear = int(stationdata.loc[sid, 'firstMeasurment'].year)
     endyear   = int(stationdata.loc[sid, 'lastMeasurment'].year)
 
