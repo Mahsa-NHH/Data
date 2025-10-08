@@ -36,6 +36,13 @@ import numpy as np
 import pandas as pd
 import time
 import random   # NEW
+import logging  # NEW
+
+logging.basicConfig(
+    level=logging.INFO, 
+    format="%(asctime)s %(levelname)s %(message)s"
+)  # NEW
+
 
 # ---------- config (same as step 1) ----------
 STORE_DIR = Path('E:/airquality/')
@@ -81,7 +88,7 @@ def sendrequest(stationname, year,
         # CHANGED: exponential backoff with a bit of jitter
         wait = min(1.8 ** attempt, 60) + random.uniform(-0.4, 0.4)
         wait = max(0.2, wait)
-        print(f"Retrying {stationname} {year} after error {last_err!s}. Waiting {wait:.1f}s…")
+        logging.warning("Retrying %s %d after error %s. Waiting %.1fs…", stationname, year, last_err, wait)
         time.sleep(wait)
     # if we exit loop, return the last response or raise
     raise RuntimeError(f"Failed {stationname} {year} after {nattempts} attempts ({last_err})")
@@ -89,7 +96,7 @@ def sendrequest(stationname, year,
 failure = []
 measuredata = pd.DataFrame()
 for sid in stationdata.index:
-    print("Loading data for ", sid)
+    logging.info("Loading data for %s", sid)
     tic = time.time()
     stationname = stationdata.loc[sid, 'station']
     startyear = stationdata.loc[sid, 'firstMeasurment'].year
@@ -108,7 +115,7 @@ for sid in stationdata.index:
                 measuredata = pd.concat((measuredata, temp), ignore_index=True)
         else:
             failure.append((sid, year))
-    print("Time taken: ", (time.time() - tic) / 60)
+    logging.info("Time taken: %.2f min", (time.time() - tic) / 60)
 
 measuredata.to_csv(STORE_DIR / 'measurements.csv', index=False)
 measuredata.to_parquet(STORE_DIR / 'measurements.pq', engine='fastparquet', index=False)
