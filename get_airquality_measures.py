@@ -48,6 +48,9 @@ logging.basicConfig(
 STORE_DIR = Path('E:/airquality/')
 STORE_DIR.mkdir(parents=True, exist_ok=True)
 
+WRITE_DIR_RAW = STORE_DIR / "raw"       # NEW
+WRITE_DIR_RAW.mkdir(exist_ok=True)      # NEW
+
 apiurl = 'https://api.nilu.no/'
 obshistoryurl = f'{apiurl}obs/historical/'
 stationlookupurl = f'{apiurl}lookup/stations'
@@ -105,16 +108,39 @@ for sid in stationdata.index:
     for year in range(startyear, endyear + 1):
         resp = sendrequest(stationname, year)
         payload = resp.json()  # NEW: parse once
-        if len(payload) > 0:
-            for cmeasure in payload:
-                temp = pd.DataFrame(cmeasure['values'])
-                temp['component'] = cmeasure['component']
-                temp['id'] = sid
-                temp['time'] = pd.to_datetime(temp.fromTime)
-                temp.drop(['fromTime', 'toTime'], axis=1, inplace=True)
-                measuredata = pd.concat((measuredata, temp), ignore_index=True)
+        from pathlib import Path  # already imported at top
+
+if len(payload) > 0:
+    # build a small list, concat once
+    block_frames = []  # NEW
+    for cmeasure in payload:
+        temp = pd.DataFrame(cmeasure['values'])
+        if temp.empty:
+            continue
+        temp['component'] = cmeasure['component']
+        temp['id'] = sid
+        if 'fromTime' in temp:
+            temp['time'] = pd.to_datetime(temp['fromTime'], errors='coerce', utc=True)  # NEW: utc and safe
+            temp.drop(['fromTime'], axis=1, inplace=True)
+        if 'toTime' in temp:
+            temp.drop(['toTime'], axis=1, inplace=True)
+        block_frames.append(temp)
+
+    if block_frames:
+        year_df = pd.concat(block_frames, ignore_index=True)  # NEW
+
+        # NEW: checkpoint file name
+        out_csv = WRITE_DIR_RAW / f"measurements_{sid}_{year}.csv.gz"
+        if out_csv.exists():
+            logging.info("  %s exists, skipping", out_csv.name)
         else:
-            failure.append((sid, year))
+            year_df.to_csv(out_csv, index=False, compression='gzip')  # NEW
+            logging.info("  wrote %s rows to %s", len(year_df), out_csv.name)
+
+        # (optional) still keep building the big DataFrame if you want final exports:
+        measuredata = pd.concat((measuredata, year_df), ignore_index=True)  # kept
+else:
+    failure.append((sid, year))
     logging.info("Time taken: %.2f min", (time.time() - tic) / 60)
 
 measuredata.to_csv(STORE_DIR / 'measurements.csv', index=False)
