@@ -73,6 +73,7 @@ import pandas as pd
 import time
 import random
 import logging
+import os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,11 +81,29 @@ logging.basicConfig(
 )
 
 # ---------- config ----------
-STORE_DIR = Path('E:/airquality/')
-STORE_DIR.mkdir(parents=True, exist_ok=True)
+def pick_store_dir() -> Path:
+    """Choose a writable output directory with sensible fallbacks."""
+    candidates = [
+        Path("E:/airquality"),                              # original target (if E: exists)
+        Path.home() / "airquality",                         # e.g., C:\Users\<you>\airquality
+        Path(__file__).resolve().parent / "data" / "airquality",  # inside repo
+    ]
+    for p in candidates:
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except Exception:
+            continue
+    # last resort: current working directory
+    p = Path.cwd() / "airquality"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
+STORE_DIR = pick_store_dir()
 WRITE_DIR_RAW = STORE_DIR / "raw"
 WRITE_DIR_RAW.mkdir(exist_ok=True)
+
+logging.info("Output directory: %s", STORE_DIR)
 
 apiurl = 'https://api.nilu.no/'
 obshistoryurl = f'{apiurl}obs/historical/'
@@ -137,10 +156,9 @@ failure = []
 measuredata = pd.DataFrame()
 
 for sid in stationdata.index:
-    logging.info("Loading data for %s", sid)
+    stationname = stationdata.loc[sid, 'station']  # define first
+    logging.info("Loading data for %s (%s)", sid, stationname)
     tic = time.time()
-
-    stationname = stationdata.loc[sid, 'station']
     startyear = int(stationdata.loc[sid, 'firstMeasurment'].year)
     endyear   = int(stationdata.loc[sid, 'lastMeasurment'].year)
 
