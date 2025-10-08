@@ -1,25 +1,18 @@
-"""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+r"""
 NILU Air Quality Downloader
 ---------------------------
 
 Purpose
 -------
 Fetch historical air-quality measurements from https://api.nilu.no for every station,
-year-by-year, with robust retries and logging. Data is written both as per-station/year
-checkpoints (so you can resume later) and as optional aggregated outputs.
+year-by-year, with robust retries and logging. Data is written as per-station/year
+checkpoints (so you can resume later) and as aggregated outputs.
 
-What it does (high level)
--------------------------
-1) Downloads the station lookup table (id, name, first/last measurement dates).
-2) Loops over each station and each year in its available range.
-3) Requests historical observations, normalizes them, and adds:
-   - time (UTC), component, station id, plus NILU-provided fields (value, unit, etc.).
-4) Writes a compressed CSV **per station-year** so progress is checkpointed.
-5) (Optional) Appends to an in-memory DataFrame and writes final aggregated files.
-
-Outputs
--------
-In STORE_DIR (default: E:/airquality/):
+Outputs (written to STORE_DIR)
+------------------------------
 - stations.csv
   Station metadata from NILU (indexed by station id), with dates parsed as UTC.
 
@@ -27,66 +20,47 @@ In STORE_DIR (default: E:/airquality/):
   Per station-year checkpoint files (compressed CSV). Safe to resume: existing files are skipped.
 
 - measurements.csv
-  Aggregated CSV of all downloaded data (if you keep the in-memory aggregation).
+  Aggregated CSV of all downloaded data, rebuilt from checkpoint files at the end.
 
 - measurements.pq
-  Aggregated Parquet of all downloaded data (engine='fastparquet').
-
-Key behaviors / features
-------------------------
-- Reuses a single requests.Session() for speed.
-- Retries failed requests with exponential backoff + jitter.
-- Uses logging with timestamps and levels (INFO/WARNING/ERROR).
-- Parses timestamps with utc=True, drops fromTime/toTime defensively if present.
-- Checkpoint strategy: per station-year files allow safe reruns (skip if file exists).
-
-Configuration
--------------
-Edit these constants near the top of the file:
-- STORE_DIR      : base output directory (Path)
-- WRITE_DIR_RAW  : STORE_DIR / "raw" (created automatically)
-- DEFAULT_TIMEOUT: request timeout in seconds
-- MAX_RETRIES    : number of retry attempts per request
-
-Requirements
-------------
-Python 3.8+ recommended
-pip install: requests, pandas, numpy, fastparquet (for Parquet writes)
-
-Usage
------
-Run the script directly:
-    python your_script.py
+  Aggregated Parquet of all downloaded data (engine='fastparquet'), rebuilt from the CSV.
 
 Notes
 -----
-- Consider adding 'raw/', '*.csv.gz', '*.parquet', 'stations.csv', 'measurements.*'
-  to .gitignore to avoid committing large data artifacts.
-- If you only need checkpointed outputs and want to reduce memory, you can skip
-  the final aggregation step by removing the in-memory concat and final writes.
+- The script ALWAYS skips station-year files that already exist (resume-friendly).
+- Aggregated outputs are reconstructed from all checkpoint files at the end,
+  so they are complete even if many years were skipped during this run.
 """
 
 from pathlib import Path
+import logging
+import time
+import random
 import requests
 import numpy as np
 import pandas as pd
-import time
-import random
-import logging
-import os
 
+# -------------------------- Logging setup --------------------------
+# Timestamped logs for progress and troubleshooting.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s"
 )
 
-# ---------- config ----------
+# -------------------------- Output directory -----------------------
 def pick_store_dir() -> Path:
-    """Choose a writable output directory with sensible fallbacks."""
+    """
+    Choose a writable output directory with sensible fallbacks.
+    Order:
+      1) E:/airquality
+      2) <home>/airquality
+      3) <repo>/data/airquality
+      4) <cwd>/airquality
+    """
     candidates = [
-        Path("E:/airquality"),                              # original target (if E: exists)
-        Path.home() / "airquality",                         # e.g., C:\Users\<you>\airquality
-        Path(__file__).resolve().parent / "data" / "airquality",  # inside repo
+        Path("E:/airquality"),
+        Path.home() / "airquality",
+        Path(__file__).resolve().parent / "data" / "airquality",
     ]
     for p in candidates:
         try:
@@ -94,7 +68,6 @@ def pick_store_dir() -> Path:
             return p
         except Exception:
             continue
-    # last resort: current working directory
     p = Path.cwd() / "airquality"
     p.mkdir(parents=True, exist_ok=True)
     return p
@@ -105,30 +78,38 @@ WRITE_DIR_RAW.mkdir(exist_ok=True)
 
 logging.info("Output directory: %s", STORE_DIR)
 
-apiurl = 'https://api.nilu.no/'
-obshistoryurl = f'{apiurl}obs/historical/'
-stationlookupurl = f'{apiurl}lookup/stations'
+# -------------------------- API endpoints --------------------------
+apiurl = "https://api.nilu.no/"
+obshistoryurl = f"{apiurl}obs/historical/"
+stationlookupurl = f"{apiurl}lookup/stations"
 
-# ---------- one reusable HTTP session + retry/backoff ----------
+# -------------------------- HTTP client & retry --------------------
+# Reuse a single Session (fewer TCP handshakes, faster).
 session = requests.Session()
-DEFAULT_TIMEOUT = 8.0
-MAX_RETRIES = 6
+DEFAULT_TIMEOUT = 8.0   # seconds per HTTP request
+MAX_RETRIES = 6         # retry attempts per request
 
-def sendrequest(stationname, year,
-                nattempts=MAX_RETRIES, timeoutlo=4, timeouthi=9, sleepfactor=5):
-    querystring = f'{obshistoryurl}{year}-01-01/{year}-12-31/{stationname}'
+def sendrequest(stationname: str, year: int,
+                nattempts: int = MAX_RETRIES,
+                timeoutlo: int = 4, timeouthi: int = 9) -> requests.Response:
+    """
+    GET historical observations for a station-year with exponential backoff + jitter.
+    Returns a successful Response (status 2xx) or raises RuntimeError after MAX_RETRIES.
+    """
+    url = f"{obshistoryurl}{year}-01-01/{year}-12-31/{stationname}"
     last_err = None
     for attempt in range(nattempts):
         try:
+            # Randomized timeout, but never below DEFAULT_TIMEOUT
             timeout = np.random.randint(timeoutlo, timeouthi)
-            resp = session.get(querystring, timeout=max(timeout, DEFAULT_TIMEOUT))
+            resp = session.get(url, timeout=max(timeout, DEFAULT_TIMEOUT))
             if resp.ok:
                 return resp
-            else:
-                last_err = f"HTTP {resp.status_code}"
+            last_err = f"HTTP {resp.status_code}"
         except requests.RequestException as err:
             last_err = err
 
+        # Exponential backoff with small jitter (polite and robust)
         wait = min(1.8 ** attempt, 60) + random.uniform(-0.4, 0.4)
         wait = max(0.2, wait)
         logging.warning(
@@ -139,73 +120,126 @@ def sendrequest(stationname, year,
 
     raise RuntimeError(f"Failed {stationname} {year} after {nattempts} attempts ({last_err})")
 
-# ---------- fetch station metadata ----------
+# -------------------------- Fetch station metadata ----------------
+# Get the station table, set id as index, and parse first/last dates (UTC).
 resp = session.get(stationlookupurl, timeout=DEFAULT_TIMEOUT)
 resp.raise_for_status()
 
 stationdata = pd.DataFrame(resp.json())
-stationdata.set_index('id', inplace=True)
-# timezone-aware + defensive parsing
-stationdata['firstMeasurment'] = pd.to_datetime(stationdata['firstMeasurment'], errors='coerce', utc=True)
-stationdata['lastMeasurment']  = pd.to_datetime(stationdata['lastMeasurment'],  errors='coerce', utc=True)
+stationdata.set_index("id", inplace=True)
+stationdata["firstMeasurment"] = pd.to_datetime(
+    stationdata["firstMeasurment"], errors="coerce", utc=True
+)
+stationdata["lastMeasurment"] = pd.to_datetime(
+    stationdata["lastMeasurment"], errors="coerce", utc=True
+)
 
-stationdata.to_csv(STORE_DIR / 'stations.csv')
+# Persist the metadata so you can inspect stations later.
+stationdata.to_csv(STORE_DIR / "stations.csv")
 
-# ---------- main download loop ----------
-failure = []
-measuredata = pd.DataFrame()
+# -------------------------- Download per-station/year -------------
+# For each station and each available year, fetch & normalize values.
+# Write a checkpoint file per station-year so runs can resume safely.
+failures = []
 
 for sid in stationdata.index:
-    stationname = stationdata.loc[sid, 'station']  # define first
+    stationname = stationdata.loc[sid, "station"]  # define before logging
     logging.info("Loading data for %s (%s)", sid, stationname)
     tic = time.time()
-    startyear = int(stationdata.loc[sid, 'firstMeasurment'].year)
-    endyear   = int(stationdata.loc[sid, 'lastMeasurment'].year)
+
+    startyear = int(stationdata.loc[sid, "firstMeasurment"].year)
+    endyear   = int(stationdata.loc[sid, "lastMeasurment"].year)
 
     for year in range(startyear, endyear + 1):
+        # Skip if a checkpoint already exists (resume-friendly behavior).
+        out_csv = WRITE_DIR_RAW / f"measurements_{sid}_{year}.csv.gz"
+        if out_csv.exists():
+            logging.info("  %s exists, skipping", out_csv.name)
+            continue
+
+        # Fetch this station-year block with robust retries.
         resp = sendrequest(stationname, year)
         payload = resp.json()
+        if not payload:
+            failures.append((sid, year))
+            continue
 
-        if payload:
-            # build a small list, then concat once (faster)
-            block_frames = []
-            for cmeasure in payload:
-                temp = pd.DataFrame(cmeasure.get('values', []))
-                if temp.empty:
-                    continue
-                temp['component'] = cmeasure.get('component')
-                temp['id'] = sid
+        # Normalize all components for this station-year into one DataFrame.
+        frames = []
+        for cmeasure in payload:
+            # Each block contains 'component' + 'values' (list of readings).
+            temp = pd.DataFrame(cmeasure.get("values", []))
+            if temp.empty:
+                continue
 
-                # timezone-aware and defensive
-                if 'fromTime' in temp:
-                    temp['time'] = pd.to_datetime(temp['fromTime'], errors='coerce', utc=True)
-                elif 'toTime' in temp:
-                    temp['time'] = pd.to_datetime(temp['toTime'],   errors='coerce', utc=True)
+            temp["component"] = cmeasure.get("component")
+            temp["id"] = sid
 
-                for c in ('fromTime', 'toTime'):
-                    if c in temp.columns:
-                        temp.drop(columns=[c], inplace=True)
+            # Parse timestamps defensively and in UTC; keep a single 'time' column.
+            if "fromTime" in temp:
+                temp["time"] = pd.to_datetime(temp["fromTime"], errors="coerce", utc=True)
+            elif "toTime" in temp:
+                temp["time"] = pd.to_datetime(temp["toTime"], errors="coerce", utc=True)
 
-                block_frames.append(temp)
+            # Drop raw time columns if present.
+            for c in ("fromTime", "toTime"):
+                if c in temp.columns:
+                    temp.drop(columns=[c], inplace=True)
 
-            if block_frames:
-                year_df = pd.concat(block_frames, ignore_index=True)
+            frames.append(temp)
 
-                # checkpoint per station-year (skip if exists)
-                out_csv = WRITE_DIR_RAW / f"measurements_{sid}_{year}.csv.gz"
-                if out_csv.exists():
-                    logging.info("  %s exists, skipping", out_csv.name)
-                else:
-                    year_df.to_csv(out_csv, index=False, compression='gzip')
-                    logging.info("  wrote %s rows to %s", len(year_df), out_csv.name)
+        if not frames:
+            failures.append((sid, year))
+            continue
 
-                # keep aggregated output (optional)
-                measuredata = pd.concat((measuredata, year_df), ignore_index=True)
-        else:
-            failure.append((sid, year))
+        year_df = pd.concat(frames, ignore_index=True)
+
+        # Write checkpoint (compressed CSV) for this station-year.
+        year_df.to_csv(out_csv, index=False, compression="gzip")
+        logging.info("  wrote %s rows to %s", len(year_df), out_csv.name)
 
     logging.info("Time taken: %.2f min", (time.time() - tic) / 60.0)
 
-# ---------- final outputs (optional aggregated files) ----------
-measuredata.to_csv(STORE_DIR / 'measurements.csv', index=False)
-measuredata.to_parquet(STORE_DIR / 'measurements.pq', engine='fastparquet', index=False)
+# -------------------------- Rebuild aggregated outputs ------------
+# Rebuild measurements.csv and measurements.pq from ALL checkpoint files,
+# so the aggregation is complete even if many years were skipped in this run.
+agg_csv = STORE_DIR / "measurements.csv"
+agg_pq  = STORE_DIR / "measurements.pq"
+
+# Start fresh each run for consistency.
+if agg_csv.exists():
+    agg_csv.unlink()
+if agg_pq.exists():
+    agg_pq.unlink()
+
+# Collect all checkpoint files deterministically.
+files = sorted(WRITE_DIR_RAW.glob("measurements_*.csv.gz"))
+
+# Append each checkpoint into the aggregated CSV without loading everything into RAM.
+CHUNK = 250_000  # adjust if you expect very large files
+header_written = False
+for f in files:
+    # If your per-year files are modest, you can read without chunks.
+    # Using chunks keeps memory steady for very large files.
+    for chunk in pd.read_csv(f, chunksize=CHUNK, compression="gzip"):
+        chunk.to_csv(
+            agg_csv,
+            index=False,
+            mode="a",
+            header=not header_written
+        )
+        header_written = True
+
+# Build Parquet from the aggregated CSV (single read/write for simplicity).
+if agg_csv.exists():
+    agg_df = pd.read_csv(agg_csv)
+    agg_df.to_parquet(agg_pq, engine="fastparquet", index=False)
+    logging.info("Wrote aggregated CSV (%s) and Parquet (%s)", agg_csv.name, agg_pq.name)
+else:
+    logging.warning("No aggregated CSV was built (no checkpoint files found).")
+
+# -------------------------- Failure log (optional) ----------------
+if failures:
+    fail_path = STORE_DIR / "failures.csv"
+    pd.DataFrame(failures, columns=["station_id", "year"]).to_csv(fail_path, index=False)
+    logging.warning("Finished with %d failures. See %s", len(failures), fail_path)
