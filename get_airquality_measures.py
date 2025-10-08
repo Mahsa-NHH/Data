@@ -156,7 +156,7 @@ failure = []
 measuredata = pd.DataFrame()
 
 for sid in stationdata.index:
-    logging.info("Loading data for %s", sid)
+    logging.info("Loading data for %s (%s)", sid, stationname)
     tic = time.time()
 
     stationname = stationdata.loc[sid, 'station']
