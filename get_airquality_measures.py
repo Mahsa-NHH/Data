@@ -30,24 +30,29 @@ Notes
   post-anchor changes so everything stays aligned to the anchor geography.
 """
 
+# CHANGED: added pathlib; kept existing libs
+from pathlib import Path  # NEW
 import requests
 import numpy as np
 import pandas as pd
 import time
 
-storefolder = 'E:/airquality/'
+# CHANGED: central config & pathlib
+STORE_DIR = Path('E:/airquality/')  # NEW: change this in one place later
+STORE_DIR.mkdir(parents=True, exist_ok=True)  # NEW: make sure folder exists
 
 apiurl = 'https://api.nilu.no/'
 obshistoryurl = f'{apiurl}obs/historical/'
 stationlookupurl = f'{apiurl}lookup/stations'
 
+# CHANGED: unchanged logic, just write using Path
 resp = requests.get(stationlookupurl)
 stationdata = pd.DataFrame(resp.json())
 stationdata.set_index('id', inplace=True)
 stationdata['firstMeasurment'] = pd.to_datetime(stationdata.firstMeasurment)
 stationdata['lastMeasurment'] = pd.to_datetime(stationdata.lastMeasurment)
 
-stationdata.to_csv(f'{storefolder}stations.csv')
+stationdata.to_csv(STORE_DIR / 'stations.csv')  # CHANGED
 
 #componentlist = ['CO', 'NO', 'NO2', 'NOx', 'O3', 'PM1', 'PM2.5', 'PM10', 'SO2']
 #stationcomponents = stationdata.components.apply(lambda x: pd.Series([z in x for z in componentlist], index=componentlist))
@@ -89,6 +94,6 @@ for sid in stationdata.index:
             failure.append((sid, year))
     print("Time taken: ", (time.time() - tic) / 60)
 
-measuredata.to_csv(f'{storefolder}measurements.csv', index=False)
-# Store as parquet
-measuredata.to_parquet(f'{storefolder}measurements.pq', engine='fastparquet', index=False)
+# CHANGED: write using Path (same filenames as before)
+measuredata.to_csv(STORE_DIR / 'measurements.csv', index=False)
+measuredata.to_parquet(STORE_DIR / 'measurements.pq', engine='fastparquet', index=False)
