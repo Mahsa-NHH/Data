@@ -14,7 +14,9 @@ Checkpointing: write raw/measurements__.csv.gz and skip if exists → resumable 
 Reliable aggregation: rebuild measurements.csv (chunked) and measurements.pq from all checkpoints at the end → same final outputs, lower memory use.
 
 Docs: added clear header explaining purpose, outputs, and behavior → future maintenance is simpler.
+
 ########################################################################
+
 #npra_download.py
 This introduces npra_client.py as the shared library that replaces the
 duplicated core logic in:
@@ -41,7 +43,9 @@ Why:
 Notes:
 - Includes clear module docstring and inline comments for maintainability
 - Designed to be consumed by the new CLI (npra_download.py)
+
 ###########################################################################
+
 #npra_download.py
 Adds npra_download.py as the command-line entry point that replaces and
 unifies the workflows of:
