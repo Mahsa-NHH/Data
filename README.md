@@ -83,3 +83,59 @@ Usage examples:
 
 Follow-up:
 - Consider deprecating/removing the original scripts and updating README to point to this CLI.
+########################################################################################
+#get_municipality_population_ssb_api.py
+"""
+author: morten
+date: 2024-10-13
+
+1. Get population data per municipality and year from SSB API (Statistics Norway)
+Use 2020 municipality codes
+
+2. Get centrality index for 2020 municipalities from SSB API
+classification ID for municipality: 131
+classification ID for centrality: 128 
+use classurl for municipality with extension correspondsAt and targetClassificationId=128 and date=2020-01-01
+
+3. Get income measures per municipality from SSB API
+Table 06944
+    - Region selection filter all ('values': ['*'])
+    - Tid selection filter all
+    - ContentsCode selection filter item values 'InntSkatt' and 'AntallHushold'
+    - HusholdType selection filter all
+    - Response format csv3
+
+Procedure:
+municipality codes and changes over time from klass
+population per municipality in Norway from table 07459 for all years and all municipality codes and 1-year age groups
+"""
+########################################################################################
+#get_ssb_cpi.py
+"""
+author: morten
+date: 2025-02-01
+
+Get data from SSB API or table downloads
+
+1. Obtain monthly CPI from 1920 to 2024
+Table 08981: Konsumprisindeks, historisk serie, etter måned (2015=100) 1920 - 2024
+
+2. Obtain yearly CPI from 1920 to 2024
+Table 08184: Konsumprisindeks, historisk serie (2015=100) 1865 - 2024
+"""
+########################################################################################
+#get_ssb_data_api.py
+"""
+author: morten
+date: 2024-10-13
+
+Get data from SSB API (Statistics Norway) and save it to a local file
+
+1. Get Quarterly GDP and population
+    - GDP in table 09190
+    - Population in table 01222
+
+2. municipality codes and changes over time from klass (131)
+    - population per municipality in Norway from befolkning in table 07459
+"""
+########################################################################################
