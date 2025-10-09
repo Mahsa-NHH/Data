@@ -1,104 +1,134 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+r"""
+get_ssb_cpi.py
+==============
+
+Purpose
+-------
+Download CPI (2015=100) from SSB:
+- Monthly CPI 1920–2024 (table 08981)
+- Yearly  CPI 1865–2024 (table 08184)
+
+Outputs (same filenames, written to robust STORE_DIR)
+-----------------------------------------------------
+- cpi_monthly_1920_2024.csv   (date: YYYY-MM-01, cpi: float)
+- cpi_yearly_1920_2024.csv    (year: int, cpi: float)
+
+Improvements
+------------
+- HTTPS, single Session, timeouts, retries with backoff.
+- Logging progress & row counts.
+- Cleans placeholders before casting to numeric.
 """
-author: morten
-date: 2025-02-01
 
-Get data from SSB API or table downloads
-
-1. Obtain monthly CPI from 1920 to 2024
-Table 08981: Konsumprisindeks, historisk serie, etter måned (2015=100) 1920 - 2024
-
-2. Obtain yearly CPI from 1920 to 2024
-Table 08184: Konsumprisindeks, historisk serie (2015=100) 1865 - 2024
-"""
-
-import requests
-import pandas as pd
-import numpy as np
+from pathlib import Path
 from io import StringIO
+import logging
+import random
+import time
+from typing import Dict, Any, Optional
 
-ssb_table_url = 'https://data.ssb.no/api/v0/no/table/'
-cpi_url = f'{ssb_table_url}08981/'
-cpi_year_url = f'{ssb_table_url}08184/'
+import numpy as np
+import pandas as pd
+import requests
 
-cpi_year_url
+# -------------------------- logging --------------------------
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+# -------------------------- paths ----------------------------
+def pick_store_dir() -> Path:
+    candidates = [
+        Path(r"E:/utility"),
+        Path.home() / "utility",
+        Path(__file__).resolve().parent / "data" / "utility",
+        Path.cwd() / "utility",
+    ]
+    for p in candidates:
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except Exception:
+            continue
+    p = Path.cwd() / "utility"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+STORE_DIR = pick_store_dir()
+logging.info("Output directory: %s", STORE_DIR)
+
+# -------------------------- HTTP helpers ---------------------
+DEFAULT_TIMEOUT = 15.0
+MAX_RETRIES = 6
+
+def session_with_defaults() -> requests.Session:
+    s = requests.Session()
+    s.headers.update({"User-Agent": "SSB-Downloader/1.0 (+contact: your.email@example.com)"})
+    return s
+
+def _sleep_backoff(attempt: int) -> None:
+    wait = min(1.8 ** attempt, 60) + random.uniform(-0.4, 0.4)
+    time.sleep(max(0.2, wait))
+
+def session_post_text(session: requests.Session, url: str, json: Dict[str, Any]) -> str:
+    last_err: Optional[Any] = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = session.post(url, json=json, timeout=DEFAULT_TIMEOUT)
+            if resp.status_code == 429 and "Retry-After" in resp.headers:
+                ra = float(resp.headers.get("Retry-After", "1"))
+                logging.warning("429 received. Respecting Retry-After=%.1fs", ra)
+                time.sleep(ra)
+                continue
+            if resp.ok:
+                return resp.text
+            last_err = f"HTTP {resp.status_code}"
+        except requests.RequestException as e:
+            last_err = e
+        logging.warning("POST retry %s (attempt %d).", last_err, attempt + 1)
+        _sleep_backoff(attempt)
+    raise RuntimeError(f"POST failed for {url}: {last_err}")
+
+# -------------------------- endpoints ------------------------
+SSB = "https://data.ssb.no/api/v0/no/table/"
+CPI_MONTH_URL = f"{SSB}08981/"
+CPI_YEAR_URL  = f"{SSB}08184/"
+
+session = session_with_defaults()
+
+# -------------------------- monthly CPI ----------------------
 cpi_query = {
-  "query": [
-    {
-      "code": "Maaned",
-      "selection": {
-        "filter": "item",
-        "values": [
-          "01",
-          "02",
-          "03",
-          "04",
-          "05",
-          "06",
-          "07",
-          "08",
-          "09",
-          "10",
-          "11",
-          "12"
-        ]
-      }
-    },
-    {
-      'code': 'Tid',
-            'selection': {
-                'filter': 'all',
-                'values': ['*']
-            }
-    }
-  ],
-  "response": {
-    "format": "csv3"
-  }
+    "query": [
+        {"code": "Maaned", "selection": {"filter": "item", "values": [f"{i:02d}" for i in range(1, 13)]}},
+        {"code": "Tid", "selection": {"filter": "all", "values": ["*"]}},
+    ],
+    "response": {"format": "csv3"},
 }
+text = session_post_text(session, CPI_MONTH_URL, json=cpi_query)
+cpi = pd.read_csv(StringIO(text))
 
-# Get data from SSB API
-r = requests.post(cpi_url, json=cpi_query)
+cpi = cpi.rename(columns={"Maaned": "month", "Tid": "year", "08981": "cpi"})
+cpi = cpi.drop(columns=["ContentsCode"], errors="ignore")
+# build date, clean numeric
+cpi["date"] = pd.to_datetime(cpi["year"].astype(str) + "-" + cpi["month"].astype(str) + "-01", errors="coerce")
+cpi["cpi"] = cpi["cpi"].replace(".", np.nan).astype(float)
+cpi = cpi.sort_values("date")[["date", "cpi"]]
 
-cpi = pd.read_csv(StringIO(r.text))
-# rename Maaned -> month, Tid -> year, 08981 -> cpi
-cpi.rename(columns={'Maaned': 'month', 'Tid': 'year', '08981': 'cpi'}, inplace=True)
-# drop ContentsCode
-cpi.drop(columns=['ContentsCode'], inplace=True)
-# Convert year (int) and month (int) to date
-cpi['date'] = pd.to_datetime(cpi['year'].astype(str) + '-' + cpi['month'].astype(str) + '-01')
+out_m = STORE_DIR / "cpi_monthly_1920_2024.csv"
+cpi.to_csv(out_m, index=False)
+logging.info("Wrote monthly CPI: %s rows -> %s", len(cpi), out_m.name)
 
-# Sort by date
-cpi.sort_values('date', inplace=True)
-
-# Convert cpi to float (missing is '.')
-cpi['cpi'] = cpi['cpi'].replace('.', np.nan).astype(float)
-
-# save to csv in E:/utility as cpi_monthly_1920_2024.csv
-# only keep cpi and date
-cpi[['date', 'cpi']].to_csv('E:/utility/cpi_monthly_1920_2024.csv', index=False)
-
-# Get yearly CPI
+# -------------------------- yearly CPI -----------------------
 cpi_year_query = {
-  "query": [
-    {
-      'code': 'Tid',
-            'selection': {
-                'filter': 'all',
-                'values': ['*']
-            }
-    }
-  ],
-  "response": {
-    "format": "csv3"
-  }
+    "query": [{"code": "Tid", "selection": {"filter": "all", "values": ["*"]}}],
+    "response": {"format": "csv3"},
 }
+text_y = session_post_text(session, CPI_YEAR_URL, json=cpi_year_query)
+cpi_y = pd.read_csv(StringIO(text_y))
+cpi_y = cpi_y.rename(columns={"Tid": "year", "08184": "cpi"})
+cpi_y = cpi_y.drop(columns=["ContentsCode"], errors="ignore")
 
-r_year = requests.post(cpi_year_url, json=cpi_year_query)
-cpi_year = pd.read_csv(StringIO(r_year.text))
-# rename Tid -> year, 08184 -> cpi
-cpi_year.rename(columns={'Tid': 'year', '08184': 'cpi'}, inplace=True)
-# drop ContentsCode
-cpi_year.drop(columns=['ContentsCode'], inplace=True)
-
-# Save to csv in E:/utility as cpi_yearly_1920_2024.csv
-cpi_year[['year', 'cpi']].to_csv('E:/utility/cpi_yearly_1920_2024.csv', index=False)
+out_y = STORE_DIR / "cpi_yearly_1920_2024.csv"
+cpi_y[["year", "cpi"]].to_csv(out_y, index=False)
+logging.info("Wrote yearly CPI: %s rows -> %s", len(cpi_y), out_y.name)
