@@ -139,3 +139,92 @@ Get data from SSB API (Statistics Norway) and save it to a local file
     - population per municipality in Norway from befolkning in table 07459
 """
 ########################################################################################
+get_municipality_population_ssb_api.py
+What it does
+Downloads and harmonizes municipality data from SSB:
+
+Population by municipality × year × 1-year age (table 07459) -> aligned to 2020 municipality codes
+
+Centrality for 2020 municipalities (KLASS 131 → 128 correspondence)
+
+Income: post-tax income (InntSkatt) and number of households (AntallHushold) from table 06944, aligned to 2020 codes, plus mean income
+
+Outputs (same filenames as before)
+
+centrality2020.csv — munid(2020), centrality
+
+munid_changes.csv — raw KLASS changes
+
+munid_codes_<min>_<max>.csv — codes + names per change date
+
+population_muni_year_age.csv — year, munid(2020), age, population
+
+income_muni_year.csv — year, munid(2020), nhouseholds, income_posttax, income
+
+What’s new in this version
+
+HTTPS + single Session + timeouts + retry/backoff (respects Retry-After)
+
+Resume-friendly: per-year checkpoints for 07459 under raw/07459_year=YYYY.csv.gz (existing files are skipped)
+
+Lower memory: final CSV rebuilt from checkpoints (no giant in-RAM concat)
+
+Deterministic KLASS mapping with clearly documented special cases
+
+Logging: timestamps, row counts, basic coverage checks
+
+Extra inline comments for maintainability
+########################################################################################
+
+get_ssb_cpi.py
+What it does
+Downloads CPI (2015=100) from SSB:
+
+Monthly CPI 1920–2024 (table 08981)
+
+Yearly CPI 1865–2024 (table 08184)
+
+Outputs (unchanged)
+
+cpi_monthly_1920_2024.csv — date (YYYY-MM-01), cpi
+
+cpi_yearly_1920_2024.csv — year, cpi
+What’s new in this version
+
+HTTPS + single Session + timeouts + retry/backoff for stable downloads
+
+Logging with timestamps and row counts
+
+Cleans placeholder values (.) before numeric casting
+
+Comments explaining steps; outputs and schema unchanged
+########################################################################################
+
+get_ssb_data_api.py
+What it does
+Builds a quarterly macro dataset:
+
+GDP (constant prices, seasonally adjusted) total & mainland from table 09190
+
+Quarterly population constructed by:
+
+placing yearly population (06913) at Q4 of previous year,
+
+linear interpolation to quarters up to 1997Q4,
+
+overwriting 1997Q4 with the true quarterly value from 01222,
+
+using true quarterly population (01222) thereafter
+
+Merges GDP + population on the quarterly period
+
+What’s new in this version:
+
+HTTPS + single Session + timeouts + retry/backoff on API calls
+
+Logging for each table fetch and resulting row counts
+
+Explicit documentation of the population splice and the 1997Q4 overwrite
+
+Clean, commented steps; output schema preserved
+########################################################################################
