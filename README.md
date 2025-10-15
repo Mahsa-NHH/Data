@@ -1,4 +1,5 @@
 #get_airquality_measures.py
+
 Brief description (what changed & why):
 
 Portable output paths: replaced hard-coded E:/ with pick_store_dir() fallbacks → runs on any machine.
@@ -228,3 +229,17 @@ Explicit documentation of the population splice and the 1997Q4 overwrite
 
 Clean, commented steps; output schema preserved
 ########################################################################################
+#get_entsoe_data_api.py
+ENTSO-E Transparency Data Downloader
+
+This Python script downloads electricity market data from the **ENTSO-E Transparency Platform RESTful API** for all **Nordic bidding zones** (Denmark, Finland, Norway, Sweden).
+
+* Fetches:
+
+  * **Actual generation per type** (`A75`, `A16`)
+  * **Installed generation capacity per type** (`A68`, `A33`)
+  * **Installed capacity per production unit** (`A71`, `A33`)
+  * **System total load** — realised (`A65`, `A16`) 
+* Parses XML responses into clean Pandas DataFrames
+* Exports data as CSV files (e.g. `nordic_hourly_gen_prodtype.csv`)
+
