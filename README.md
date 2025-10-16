@@ -228,7 +228,8 @@ Logging for each table fetch and resulting row counts
 Explicit documentation of the population splice and the 1997Q4 overwrite
 
 Clean, commented steps; output schema preserved
-########################################################################################
+#####################################################################################
+
 #get_entsoe_data_api.py
 ENTSO-E Transparency Data Downloader
 
