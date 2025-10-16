@@ -1,6 +1,7 @@
 """
 Created on 02.09.2024
 Author: M. Saethre
+Updated on 10.15.2025 by Mahsa
 
 Description: This script will download data from the ENTSO-E Transparency restful API
 
@@ -10,6 +11,8 @@ import requests
 import pandas as pd
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+import os
+from pathlib import Path
 
 
 # Define the base URL for the ENTSO-E Transparency API
@@ -27,8 +30,11 @@ namespaces = {
 # Define lists of parameters and values for the API
 # Information from ENTSO-E API guidelines, appendix A
 ########################################################
-# Load area codes from csv file
-areacodes = pd.read_csv('E:/electricity/entsoe/entsoe_area_codes.csv')
+# Load area codes from csv file (ENV first, then fallback)
+env_dir = os.getenv("ENTSOE_DATA_DIR")
+default_dir = Path(r"C:/Users/s15832/Documents/Project/Data/entsoe")
+data_dir = Path(env_dir).expanduser() if env_dir else default_dir
+areacodes = pd.read_csv(data_dir / "entsoe_area_codes.csv")
 
 ### DocumentType
 documenttype = pd.DataFrame({
@@ -59,6 +65,9 @@ documenttype['short_name'] = ['FinSched', 'AggEnergy', 'AcqRes', 'BidDoc', 'Allo
                               'FinSit', 'CrossBal', 'ContrResP', 'NetExp', 'CountTr', 'CongCost', 'DCLinkCap', 'NonEUAlloc',
                               'ConfigDoc', 'FlowAlloc', 'AggTSO', 'BidAvail']
 documenttype.set_index('short_name', inplace=True)
+
+# Map document code -> short name for logging
+DOC_SHORT_BY_CODE = documenttype.reset_index().set_index('code')['short_name']
 
 
 ### ProcessType
@@ -96,7 +105,7 @@ psrtype.set_index('short_name', inplace=True)
 #########################################################
 # Functions: Request data from API and parse xml response
 #########################################################
-def get_entsoe_data(document_type, process_type, in_domain, period_start, period_end):
+def get_entsoe_data(document_type, process_type, in_domain, period_start, period_end, bzn_label=None, out_domain=None):
     """
     Fetches data from the ENTSO-E Transparency API.
 
@@ -106,6 +115,8 @@ def get_entsoe_data(document_type, process_type, in_domain, period_start, period
         in_domain (str): The bidding zone code (e.g., '10YNO-1--------2' for Norway).
         period_start (str): Start of the period in YYYYMMDDHHMM format.
         period_end (str): End of the period in YYYYMMDDHHMM format.
+        bzn_label (str, optional): Human-readable BZN label (e.g., 'NO1') attached to rows.
+        out_domain (str, optional): Optional out_Domain EIC for queries that require it.
 
     Returns:
         list: A list of dictionaries containing the extracted data.
@@ -119,19 +130,22 @@ def get_entsoe_data(document_type, process_type, in_domain, period_start, period
         "periodStart": period_start,
         "periodEnd": period_end
     }
+    if out_domain:
+        params["out_Domain"] = out_domain
 
     response = requests.get(base_url, params=params)
 
     if response.status_code == 200:
-        return parse_xml_response(response.content)
+        return parse_xml_response(response.content, bzn_label or in_domain)
     else:
         print("Error:", response.status_code)
         return []
 
-def parse_xml_response(xml_content):
+def parse_xml_response(xml_content, bzn_label):
     """
     Args:
         xml_content (str): The XML content to parse.
+        bzn_label (str): Label of the bidding zone to attach to rows.
 
     Returns:
         list: A list of dictionaries containing the extracted data.
@@ -142,18 +156,27 @@ def parse_xml_response(xml_content):
 
     data = []
     for ts in time_series:
-        start = ts.find('.//ns:Period/ns:timeInterval/ns:start', namespaces=namespaces).text
-        start_time = datetime.fromisoformat(start.replace('Z', '+00:00'))
-        psr_type = ts.find('.//ns:MktPSRType/ns:psrType', namespaces=namespaces).text
+        start_el = ts.find('.//ns:Period/ns:timeInterval/ns:start', namespaces=namespaces)
+        if start_el is None or start_el.text is None:
+            continue
+        start_time = datetime.fromisoformat(start_el.text.replace('Z', '+00:00'))
+
+        psr_el = ts.find('.//ns:MktPSRType/ns:psrType', namespaces=namespaces)
+        psr_type = psr_el.text if psr_el is not None else None
+
         points = ts.findall('.//ns:Period/ns:Point', namespaces=namespaces)
 
         for point in points:
-            position = int(point.find('ns:position', namespaces=namespaces).text)
-            quantity = float(point.find('ns:quantity', namespaces=namespaces).text)
+            pos_el = point.find('ns:position', namespaces=namespaces)
+            qty_el = point.find('ns:quantity', namespaces=namespaces)
+            if pos_el is None or qty_el is None:
+                continue
+            position = int(pos_el.text)
+            quantity = float(qty_el.text)
             timestamp = start_time + timedelta(hours=position - 1)
 
             data.append({
-                'bzn': bzn,
+                'bzn': bzn_label,
                 'psrtype': psr_type,
                 'timestamp': timestamp,
                 'quantity': quantity
@@ -172,19 +195,39 @@ bznmap = areacodes[areacodes.BZN.notnull()].set_index('BZN').code
 data = []
 for bzn in nordic_bzn:
     for year in range(2014, 2025):
-        print("Fetching", bzn, year)
+        doc_code = documenttype.loc['ActGenType', 'code']  # A75
+        print(f"Fetching {bzn} {year} {DOC_SHORT_BY_CODE.get(doc_code, doc_code)} Realised")
         data.extend(get_entsoe_data(
-            document_type=documenttype.loc['ActGenType', 'code'],
-            process_type=processtype.loc['Real', 'code'],
+            document_type=doc_code,
+            process_type=processtype.loc['Real', 'code'],          # A16
             in_domain=bznmap.loc[bzn],
             period_start=f"{year}01010000",
-            period_end=f"{year}12310000"
+            period_end=f"{year}12310000",
+            bzn_label=bzn
         ))
 
 data = pd.DataFrame(data)
 data['prodtype'] = data.psrtype.map(psrtype.reset_index().set_index('code').short_name)
 
-data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv('E:/electricity/entsoe/nordic_hourly_gen_prodtype.csv', index=False)
+try:
+    script_dir = Path(__file__).resolve().parent
+except NameError:
+    # __file__ is not defined (e.g., interactive mode)
+    script_dir = Path.cwd()
+
+# Determine output directory (ENTSOE_DATA_DIR or ./outputs next to this script)
+env_dir = os.getenv("ENTSOE_DATA_DIR")
+default_dir = script_dir / "outputs"
+output_dir = Path(env_dir).expanduser() if env_dir else default_dir
+
+# Ensure the directory exists
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# Output file: CSV containing columns ['bzn', 'prodtype', 'timestamp', 'quantity']
+output_file = output_dir / "nordic_hourly_gen_prodtype.csv"
+
+# Write CSV (remove duplicate)
+data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(output_file, index=False)
 
 
 ##################################################
@@ -232,38 +275,90 @@ pd.DataFrame(parse_xml_response(response.content)).shape
 data = []
 for bzn in nordic_bzn:
     for year in range(2014, 2025):
-        print("Fetching", bzn, year)
+        print("Fetching", bzn, year, "A65 Realised")
         response_data = get_entsoe_data(
-            document_type=documenttype.loc['SysLoad', 'code'],
-            process_type=processtype.loc['Real', 'code'],
+            document_type=documenttype.loc['SysLoad', 'code'],    # A65
+            process_type=processtype.loc['Real', 'code'],          # A16
             in_domain=bznmap.loc[bzn],
-            out_domain=bznmap.loc[bzn],
             period_start=f"{year}01010000",
-            period_end=f"{year}12310000"
+            period_end=f"{year}12310000",
+            bzn_label=bzn
         )
-        # Add bidding zone to each data point
         for record in response_data:
             record['bidding_zone'] = bzn
         data.extend(response_data)
 
 real_load = pd.DataFrame(data)
 
-# Get day-ahead total load
+##################################################
+# Download capacities per generation type (A68, Year-ahead)
+##################################################
+
 data = []
 for bzn in nordic_bzn:
     for year in range(2014, 2025):
-        print("Fetching", bzn, year)
-        response_data = get_entsoe_data(
-            document_type=documenttype.loc['SysLoad', 'code'],
-            process_type=processtype.loc['DA', 'code'],
+        print("Fetching", bzn, year, "A68 Year-ahead")
+        data.extend(get_entsoe_data(
+            document_type=documenttype.loc['GenType', 'code'],     # A68
+            process_type=processtype.loc['YA', 'code'],            # A33
             in_domain=bznmap.loc[bzn],
-            out_domain=bznmap.loc[bzn],
             period_start=f"{year}01010000",
-            period_end=f"{year}12310000"
-        )
-        # Add bidding zone to each data point
-        for record in response_data:
-            record['bidding_zone'] = bzn
-        data.extend(response_data)
+            period_end=f"{year}12310000",
+            bzn_label=bzn
+        ))
 
-da_load = pd.DataFrame(data)
+# Test
+in_domain = bznmap.loc[nordic_bzn[0]]
+document_type = documenttype.loc['GenType', 'code']
+process_type = processtype.loc['YA', 'code']  # A33
+year = 2015
+period_start = f"{year}01010000"
+period_end = f"{year}12310000"
+
+params = {
+    "securityToken": api_key,
+    "documentType": document_type,
+    "processType": process_type,
+    "in_Domain": in_domain,
+    "periodStart": period_start,
+    "periodEnd": period_end
+}
+
+response = requests.get(base_url, params=params)
+pd.DataFrame(parse_xml_response(response.content, bzn_label=nordic_bzn[0])).shape
+
+##################################################
+# Download Actual generation (A73, Realised) and Generation forecast (A71, Year-ahead)
+##################################################
+
+# A73 
+a73_data = []
+for bzn in nordic_bzn:
+    for year in range(2014, 2025):
+        print("Fetching", bzn, year, "A73 Realised")
+        a73_data.extend(get_entsoe_data(
+            document_type=documenttype.loc['ActGen', 'code'],  # A73
+            process_type=processtype.loc['Real', 'code'],      # A16
+            in_domain=bznmap.loc[bzn],
+            period_start=f"{year}01010000",
+            period_end=f"{year}12310000",
+            bzn_label=bzn
+        ))
+a73 = pd.DataFrame(a73_data)
+(a73 if not a73.empty else pd.DataFrame(columns=['bzn','timestamp','quantity'])).to_csv(output_dir / "nordic_hourly_actual_generation.csv", index=False)
+
+# A71
+a71_data = []
+for bzn in nordic_bzn:
+    for year in range(2014, 2025):
+        print("Fetching", bzn, year, "A71 Year-ahead")
+        a71_data.extend(get_entsoe_data(
+            document_type=documenttype.loc['GenForecast', 'code'],  # A71
+            process_type=processtype.loc['YA', 'code'],             # A33
+            in_domain=bznmap.loc[bzn],
+            period_start=f"{year}01010000",
+            period_end=f"{year}12310000",
+            bzn_label=bzn
+        ))
+a71 = pd.DataFrame(a71_data)
+(a71 if not a71.empty else pd.DataFrame(columns=['bzn','timestamp','quantity'])).to_csv(output_dir / "nordic_generation_forecast.csv", index=False) 
