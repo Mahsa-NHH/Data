@@ -178,4 +178,4 @@ columns_order = ["code", "countryarea", "BZN", "BZA", "CTA", "MBA", "IBA", "IPA"
 df = df.reindex(columns=columns_order)
 
 # Save the DataFrame to a CSV file
-df.to_csv('E:/electricity/entsoe/entsoe_area_codes.csv', index=False)
+df.to_csv('C:/Users/s15832/Documents/Project/Data/entsoe/entsoe_area_codes.csv')
