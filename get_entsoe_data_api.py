@@ -188,25 +188,25 @@ def parse_xml_response(xml_content, bzn=None):
 nordic_bzn = ['DK1', 'DK2', 'FI', 'NO1', 'NO2', 'NO3', 'NO4', 'NO5', 'SE1', 'SE2', 'SE3', 'SE4']
 bznmap = areacodes[areacodes.BZN.notnull()].set_index('BZN').code
 
-data = []
-for bzn in nordic_bzn:
-    for year in range(2014, 2025):
-        print("Fetching", bzn, year)
-        data.extend(get_entsoe_data(
-            document_type=documenttype.loc['ActGenType', 'code'],
-            process_type=processtype.loc['Real', 'code'],
-            in_domain=bznmap.loc[bzn],
-            period_start=f"{year}01010000",
-            period_end=f"{year}12310000",
-            bzn=bzn
-))
+# data = []
+# for bzn in nordic_bzn:
+#     for year in range(2014, 2025):
+#         print("Fetching", bzn, year)
+#         data.extend(get_entsoe_data(
+#             document_type=documenttype.loc['ActGenType', 'code'],
+#             process_type=processtype.loc['Real', 'code'],
+#             in_domain=bznmap.loc[bzn],
+#             period_start=f"{year}01010000",
+#             period_end=f"{year}12310000",
+#             bzn=bzn
+# ))
 
-data = pd.DataFrame(data)
-data['prodtype'] = data.psrtype.map(psrtype.reset_index().set_index('code').short_name)
+# data = pd.DataFrame(data)
+# data['prodtype'] = data.psrtype.map(psrtype.reset_index().set_index('code').short_name)
 
-data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
-    'C:/Users/s15832/Documents/Project/Data/entsoe/nordic_hourly_gen_prodtype.csv', index=False
-    )
+# data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
+#     'C:/Users/s15832/Documents/Project/Data/entsoe/nordic_hourly_gen_prodtype.csv', index=False
+#     )
 
 # #################################################
 # # Download Installed capacities per production type (A68, GenType)
@@ -251,9 +251,10 @@ data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
 # a73 = pd.DataFrame(a73_data)
 # (a73 if not a73.empty else pd.DataFrame(columns=['bzn','timestamp','quantity'])).to_csv(output_dir / "nordic_hourly_actual_generation.csv", index=False)
 
-# ##################################################
-# # Download Installed capacity per production unit (A71, Year-ahead)
-# ##################################################
+
+##################################################
+# Download Installed capacity per production unit (A71, Year-ahead)
+##################################################
 # a71_data = []
 # for bzn in nordic_bzn:
 #     for year in range(2014, 2025):
@@ -263,10 +264,16 @@ data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
 #             process_type=processtype.loc['YA', 'code'],             # A33
 #             in_domain=bznmap.loc[bzn],
 #             period_start=f"{year}01010000",
-#             period_end=f"{year}12310000"
+#             period_end=f"{year}12310000",
+#             bzn=bzn
 #         ))
 # a71 = pd.DataFrame(a71_data)
-# (a71 if not a71.empty else pd.DataFrame(columns=['bzn','timestamp','quantity'])).to_csv(output_dir / "nordic_generation_forecast.csv", index=False)
+# #print(a71.columns.tolist())
+# a71['prodtype'] = a71.psrtype.map(psrtype.reset_index().set_index('code').short_name)
+# # Save
+# a71[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
+#     'C:/Users/s15832/Documents/Project/Data/entsoe/nordic_generation_forecast.csv', index=False
+#       )
 
 ##################################################
 # Download System total load (A65, Realised)
