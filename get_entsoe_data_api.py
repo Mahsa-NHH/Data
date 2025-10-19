@@ -188,25 +188,25 @@ def parse_xml_response(xml_content, bzn=None):
 nordic_bzn = ['DK1', 'DK2', 'FI', 'NO1', 'NO2', 'NO3', 'NO4', 'NO5', 'SE1', 'SE2', 'SE3', 'SE4']
 bznmap = areacodes[areacodes.BZN.notnull()].set_index('BZN').code
 
-# data = []
-# for bzn in nordic_bzn:
-#     for year in range(2014, 2025):
-#         print("Fetching", bzn, year)
-#         data.extend(get_entsoe_data(
-#             document_type=documenttype.loc['ActGenType', 'code'],
-#             process_type=processtype.loc['Real', 'code'],
-#             in_domain=bznmap.loc[bzn],
-#             period_start=f"{year}01010000",
-#             period_end=f"{year}12310000",
-#             bzn=bzn
-# ))
+data = []
+for bzn in nordic_bzn:
+    for year in range(2014, 2025):
+        print("Fetching", bzn, year)
+        data.extend(get_entsoe_data(
+            document_type=documenttype.loc['ActGenType', 'code'],
+            process_type=processtype.loc['Real', 'code'],
+            in_domain=bznmap.loc[bzn],
+            period_start=f"{year}01010000",
+            period_end=f"{year}12310000",
+            bzn=bzn
+))
 
-# data = pd.DataFrame(data)
-# data['prodtype'] = data.psrtype.map(psrtype.reset_index().set_index('code').short_name)
+data = pd.DataFrame(data)
+data['prodtype'] = data.psrtype.map(psrtype.reset_index().set_index('code').short_name)
 
-# data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
-#     'C:/Users/s15832/Documents/Project/Data/entsoe/nordic_hourly_gen_prodtype.csv', index=False
-#     )
+data[['bzn', 'prodtype', 'timestamp', 'quantity']].to_csv(
+    'C:/Users/s15832/Documents/Project/Data/entsoe/nordic_hourly_gen_prodtype.csv', index=False
+    )
 
 # #################################################
 # # Download Installed capacities per production type (A68, GenType)
