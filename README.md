@@ -243,4 +243,26 @@ This Python script downloads electricity market data from the **ENTSO-E Transpar
   * **System total load** — realised (`A65`, `A16`) 
 * Parses XML responses into clean Pandas DataFrames
 * Exports data as CSV files (e.g. `nordic_hourly_gen_prodtype.csv`)
+  ###################################################################################
+
+#get_entsoe_ActGen_A73_entsoe_lib.py
+This project provides a Python-based data downloader for the ENTSO-E Transparency Platform, designed specifically to collect and organize hourly electricity generation data per unit (A73) for the Nordic power markets — Denmark (DK), Finland (FI), Norway (NO), and Sweden (SE).
+
+The script automatically connects to the ENTSO-E API, retrieves hourly production data for every month between 2014 and 2025, and stores the results as clean, analysis-ready CSV files. It handles missing or unavailable data gracefully, retries failed connections, and falls back to XML parsing when the API doesn’t return structured numeric data.
+
+The purpose of this script is to build a complete, standardized dataset of Nordic generation by unit and fuel type
+
+Each monthly output file (A73_Nordic_Filled_Month_YYYY-MM.csv) contains the following columns:
+
+datetime → hourly UTC timestamp
+
+country → market area code (DK, FI, NO, SE)
+
+Type → generation type (e.g., Hydro, Wind, Nuclear, Thermal)
+
+Generation Unit → power plant or unit identifier
+
+generation_MW → actual generated power in megawatts
+
+Together, these outputs provide a consistent, long-term view of Nordic electricity generation, covering over a decade of hourly data.
 
