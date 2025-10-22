@@ -245,24 +245,123 @@ This Python script downloads electricity market data from the **ENTSO-E Transpar
 * Exports data as CSV files (e.g. `nordic_hourly_gen_prodtype.csv`)
   ###################################################################################
 
-#get_entsoe_ActGen_A73_entsoe_lib.py
-This project provides a Python-based data downloader for the ENTSO-E Transparency Platform, designed specifically to collect and organize hourly electricity generation data per unit (A73) for the Nordic power markets — Denmark (DK), Finland (FI), Norway (NO), and Sweden (SE).
+#####################################################################################
+## ⚡ ENTSO-E Transparency Downloader — Actual Generation per Unit (A73)
+#####################################################################################
 
-The script automatically connects to the ENTSO-E API, retrieves hourly production data for every month between 2014 and 2025, and stores the results as clean, analysis-ready CSV files. It handles missing or unavailable data gracefully, retries failed connections, and falls back to XML parsing when the API doesn’t return structured numeric data.
+**Script name:** `get_entsoe_ActGen_A73_entsoe_lib.py`  
+**Purpose:** Downloads and compiles hourly **Actual Generation per Unit (A73)** data for the Nordic electricity markets —  
+**Denmark (DK), Finland (FI), Norway (NO), and Sweden (SE)** — from **2014 to 2025**.
 
-The purpose of this script is to build a complete, standardized dataset of Nordic generation by unit and fuel type
+### 📊 What It Does:
+- Connects automatically to the **ENTSO-E Transparency Platform API**
+- Retrieves hourly production data per generating unit
+- Handles connection errors and retries failed API calls
+- Falls back to XML parsing if structured numeric data is missing
+- Ensures even countries with missing data (e.g., Norway in some periods) return valid, empty frames
 
-Each monthly output file (A73_Nordic_Filled_Month_YYYY-MM.csv) contains the following columns:
+### ⚙️ How It Works:
+- Uses the `entsoe-py` client to fetch A73 data (Actual Generation per Unit)
+- Runs month-by-month queries for each country
+- Cleans and standardizes the data into consistent Pandas DataFrames
+- Saves outputs as UTF-8 encoded CSV files, one per month
 
-datetime → hourly UTC timestamp
+### 💾 Output Files:
+Each monthly file is saved as:
+with columns:
+datetime → Hourly UTC timestamp
+country → Market area code (DK, FI, NO, SE)
+Type → Generation type (Hydro, Wind, Nuclear, etc.)
+Generation Unit → Power plant or unit identifier
+generation_MW → Actual generated power in megawatts
 
-country → market area code (DK, FI, NO, SE)
+### ✅ Key Features:
+- Covers over a decade of hourly generation data (2014–2025)
+- Handles API inconsistencies and acknowledgements gracefully
+- Builds a unified, long-term view of **Nordic power generation by unit and technology**
 
-Type → generation type (e.g., Hydro, Wind, Nuclear, Thermal)
+Together, these outputs provide a complete, high-quality dataset for analyzing historical trends in Nordic electricity production.
+#####################################################################################
+#####################################################################################
+## ⚡ ENTSO-E Transparency Downloader — Actual Generation & Installed Capacity
+#####################################################################################
 
-Generation Unit → power plant or unit identifier
+**Script name:** `get_entsoe_ActGenType_A75&GenType_A68.py`  
+**Purpose:** Downloads hourly and installed generation data for all Nordic bidding zones  
+**Countries covered:** Denmark (DK1, DK2), Finland (FI), Norway (NO1–NO5), Sweden (SE1–SE4)
 
-generation_MW → actual generated power in megawatts
+### 📊 Fetches:
+- **Actual generation per type** — *DocumentType A75, ProcessType A16 (Realised)*  
+- **Installed generation capacity per type** — *DocumentType A68, ProcessType A33 (Year-ahead)*  
 
-Together, these outputs provide a consistent, long-term view of Nordic electricity generation, covering over a decade of hourly data.
+### ⚙️ How It Works:
+- Connects to the ENTSO-E Transparency Platform REST API  
+- Parses XML responses into structured Pandas DataFrames  
+- Combines all Nordic zones for years **2014–2025**
+
+### 💾 Output:
+Saves hourly generation data as:
+with columns:
+
+### ✅ Key Features:
+- Handles ENTSO-E XML namespaces and API errors  
+- Loops automatically through all years and bidding zones  
+- Converts ENTSO-E energy data into tidy, ready-to-analyze CSVs
+#####################################################################################
+#####################################################################################
+## ⚡ ENTSO-E Transparency Downloader — Installed Capacity per Production Unit (A71)
+#####################################################################################
+
+**Script name:** `get_entsoe_GenForecast_A71.py`  
+**Purpose:** Downloads **generation forecast / installed capacity per production unit**  
+**Coverage:** Nordic bidding zones (DK, FI, NO, SE) from **2014–2025**
+
+### 📊 Fetches:
+- **Installed capacity per production unit (Generation Forecast)**  
+  - *DocumentType A71 (GenForecast)*  
+  - *ProcessType A33 (Year-ahead)*
+
+### ⚙️ How It Works:
+- Queries the ENTSO-E Transparency API directly  
+- Extracts XML elements from `<TimeSeries>` nodes  
+- Converts hourly data into Pandas DataFrames  
+- Aggregates across all Nordic zones and years
+
+### 💾 Output:
+Saves forecasted installed capacity as:
+with columns:
+
+### ✅ Key Features:
+- Automatically handles multiple years (2014–2025)  
+- Fully compatible with ENTSO-E XML schema  
+- Produces high-quality CSV data for capacity and forecast analysis
+#####################################################################################
+#####################################################################################
+## ⚡ ENTSO-E Transparency Downloader — System Total Load (Day-Ahead & Actual)
+#####################################################################################
+
+**Script name:** `get_entsoe_SysLoad_A65.py`  
+**Purpose:** Downloads **total system load** (forecast and actual) for Nordic bidding zones  
+**Coverage:** Denmark, Finland, Norway, and Sweden (DK1–SE4), years **2014–2025**
+
+### 📊 Fetches:
+- **Day-ahead load forecast** — *DocumentType A65, ProcessType A01 (Day-ahead)*  
+- **Actual load** — *DocumentType A65, ProcessType A16 (Realised)*
+
+### ⚙️ How It Works:
+- Queries ENTSO-E API for each zone and year  
+- Parses XML responses supporting multiple ENTSO-E namespaces  
+- Merges day-ahead and actual load into a unified hourly series  
+
+### 💾 Output:
+Exports combined total load data as:
+with columns:
+
+### ✅ Key Features:
+- Handles hourly and 15-minute resolution data  
+- Supports namespace differences across datasets  
+- Provides a single, consolidated CSV for system load analytics  
+#####################################################################################
+
+
 
